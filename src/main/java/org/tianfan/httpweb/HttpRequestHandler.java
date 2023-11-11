@@ -5,22 +5,24 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
+import io.netty.util.ReferenceCountUtil;
 import jakarta.activation.MimetypesFileTypeMap;
+import org.tianfan.httpmysql.MySqlUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.sql.Connection;
 import java.util.HashMap;
 import java.util.Map;
 
 import static io.netty.handler.codec.http.HttpUtil.is100ContinueExpected;
-
 public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
-  private   String path=null;
+    private   String path=null;
 
-  private   String method=null;
+    private   String method=null;
 
     public HttpRequestHandler(String path,String method){
         this.path=path;
@@ -50,23 +52,49 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) throws Exception {
+
+
         //100 Continue
         if (is100ContinueExpected(req)) {
+
             ctx.write(new DefaultFullHttpResponse(
-                           HttpVersion.HTTP_1_1,
-                           HttpResponseStatus.CONTINUE));
+                    HttpVersion.HTTP_1_1,
+                    HttpResponseStatus.CONTINUE));
         }
-		// 获取请求的uri
+        // 获取请求的uri
         String uri = req.uri();
         Map<String,String> resMap = new HashMap<>();
         resMap.put("method",req.method().name());
         resMap.put("uri",uri);
-        if (uri.equals(path)&&resMap.get("method").equals(method)){
+        if (!uri.equals(path)){
+            ctx.fireChannelRead(req);
+        }
+
+        if (uri.equals(path)&&resMap.get("method").equals(Constant.Get)){
             handleResource(ctx, resMap);
+        } else if (uri.equals(path)&&resMap.get("method").equals(Constant.Post)){
+            handlePostResource(ctx, resMap,req);
         }else {
             handleNotFound(ctx, resMap);
         }
     }
+
+    private void handlePostResource(ChannelHandlerContext ctx, Map<String, String> resMap, FullHttpRequest req) {
+        StringBuilder contentBuilder = new StringBuilder();
+        req.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED);
+        ByteBuf content = req.content();
+        contentBuilder.append(content.toString(CharsetUtil.UTF_8));
+        // 处理POST请求的内容
+        String contentStr = contentBuilder.toString();
+        String[] split = contentStr.split("&");
+        Connection connection = MySqlUtils.getConnection();
+
+        System.out.println("POST请求的内容为：" + contentStr);
+        // 清空StringBuilder
+        contentBuilder.setLength(0);
+        handleResource(ctx,resMap);
+    }
+
 
     private void handleNotFound(ChannelHandlerContext ctx, Map<String, String> resMap) {
 
@@ -100,15 +128,37 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
             HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, headers);
             ctx.write(response);
             ctx.write(new DefaultFileRegion(raf.getChannel(), 0, raf.length()));
+            ChannelFuture future = ctx.writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+            future.addListener(ChannelFutureListener.CLOSE);
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            // 记录日志或者重新抛出异常
+            throw new RuntimeException("处理文件时发生IOException", e);
+        } finally {
+            if (raf != null) {
+                try {
+                    ctx.close();
+                    raf.close();
+                } catch (IOException e) {
+                    // ignore
+                }
+            }
         }
-        ChannelFuture future = ctx.writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
-        future.addListener(ChannelFutureListener.CLOSE);
-
     }
+
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        super.exceptionCaught(ctx, cause);
+        Channel channel = ctx.channel();
+        if (channel.isActive()) {
+            // 记录异常信息
+            System.err.println("Exception caught: " + cause.getMessage());
+            ctx.close();
+        }
+    }
+
 
     private HttpHeaders getContentTypeHeader(File file) {
         MimetypesFileTypeMap mimeTypesMap = new MimetypesFileTypeMap();

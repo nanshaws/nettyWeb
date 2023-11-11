@@ -26,7 +26,6 @@ public class HttpServer {
                 .handler(new LoggingHandler(LogLevel.DEBUG))
                 .channel(NioServerSocketChannel.class)
                 .childHandler(new HttpServerInitializer());
-
         ChannelFuture f = bootstrap.bind(new InetSocketAddress(port)).sync();
         System.out.println(" server start up on port : " + port);
         f.channel().closeFuture().sync();
