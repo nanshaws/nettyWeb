@@ -4,6 +4,10 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.multipart.Attribute;
+import io.netty.handler.codec.http.multipart.FileUpload;
+import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
+import io.netty.handler.codec.http.multipart.InterfaceHttpData;
 import io.netty.util.CharsetUtil;
 import io.netty.util.ReferenceCountUtil;
 import jakarta.activation.MimetypesFileTypeMap;
@@ -84,28 +88,40 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
         }
     }
 
-    private void handlePostResource(ChannelHandlerContext ctx, Map<String, String> resMap, FullHttpRequest req) {
+    private void handlePostResource(ChannelHandlerContext ctx, Map<String, String> resMap, FullHttpRequest req) throws IOException {
         StringBuilder contentBuilder = new StringBuilder();
-        req.headers().set(HttpHeaderNames.CONTENT_TYPE, HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED);
-        ByteBuf content = req.content();
-        contentBuilder.append(content.toString(CharsetUtil.UTF_8));
+
+        Map<String, Object> requestData = new HashMap<>();
+        HttpPostRequestDecoder decoder = new HttpPostRequestDecoder(req);
+        List<InterfaceHttpData> bodyHttpDatas = decoder.getBodyHttpDatas();
+        for (InterfaceHttpData data : bodyHttpDatas) {
+            if (data instanceof Attribute) {
+                Attribute attribute = (Attribute) data;
+
+                System.out.println(attribute.getName());
+                System.out.println(attribute.getValue());
+                requestData.put(attribute.getName(), attribute.getValue());
+            } else if (data instanceof FileUpload) {
+                FileUpload fileUpload = (FileUpload) data;
+                System.out.println("文件名：" + fileUpload.getName());
+            }
+        }
+
+
         // 处理POST请求的内容
-        String contentStr = contentBuilder.toString();
-        String[] split = contentStr.split("&");
         SqlSession sqlSession = MyBatisUtil.getSqlSession();
         UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
         //调用方法
         List<User> users = userMapper.getUsers();
         System.out.println(users);
         for (User user:users){
-            if (user.getUsername().equals(split[0])&&user.getPassword().equals(split[1]))
+            if (user.getUsername().equals(requestData.get("username"))&&user.getPassword().equals(requestData.get("password")))
             {
                 handleResource(ctx,resMap);
                 return;
             }
         }
         resMap.put("uri","/loginFail");
-        System.out.println("POST请求的内容为：" + contentStr);
         // 清空StringBuilder
         contentBuilder.setLength(0);
         handleResource(ctx,resMap);
