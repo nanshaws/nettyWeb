@@ -7,7 +7,11 @@ import io.netty.handler.codec.http.*;
 import io.netty.util.CharsetUtil;
 import io.netty.util.ReferenceCountUtil;
 import jakarta.activation.MimetypesFileTypeMap;
+import org.apache.ibatis.session.SqlSession;
+import org.tianfan.httpmysql.MyBatisUtil;
 import org.tianfan.httpmysql.MySqlUtils;
+import org.tianfan.httpmysql.mapper.UserMapper;
+import org.tianfan.httpmysql.pojo.User;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -15,6 +19,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.sql.Connection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static io.netty.handler.codec.http.HttpUtil.is100ContinueExpected;
@@ -87,8 +92,19 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
         // 处理POST请求的内容
         String contentStr = contentBuilder.toString();
         String[] split = contentStr.split("&");
-        Connection connection = MySqlUtils.getConnection();
-
+        SqlSession sqlSession = MyBatisUtil.getSqlSession();
+        UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+        //调用方法
+        List<User> users = userMapper.getUsers();
+        System.out.println(users);
+        for (User user:users){
+            if (user.getUsername().equals(split[0])&&user.getPassword().equals(split[1]))
+            {
+                handleResource(ctx,resMap);
+                return;
+            }
+        }
+        resMap.put("uri","/loginFail");
         System.out.println("POST请求的内容为：" + contentStr);
         // 清空StringBuilder
         contentBuilder.setLength(0);
