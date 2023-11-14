@@ -38,6 +38,10 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
         this.method=method;
     }
 
+    public HttpRequestHandler(){
+
+    }
+
     public void setMethod(String method) {
         this.method = method;
     }
