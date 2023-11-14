@@ -20,12 +20,15 @@ public class MyServerHandler extends ChannelInboundHandlerAdapter {
             switch (event.state()) {
                 case READER_IDLE:
                     eventType = "读空闲";
+                    System.out.println("读空闲");
                     break;
                 case WRITER_IDLE:
                     eventType = "写空闲";
+                    System.out.println("写空闲");
                     break;
                 case ALL_IDLE:
                     eventType = "读写空闲";
+                    System.out.println("读写空闲");
                     break;
             }
             System.out.println(ctx.channel().remoteAddress() + "--超时事件--" + eventType);
