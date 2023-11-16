@@ -4,7 +4,7 @@
 # 手撸redis
 Netty开发redis客户端，Netty发送redis命令，netty解析redis消息。
 # 加入了心跳检测
-为了连接中间件
+可能为了连接中间件
 后续继续修改。
 
 
