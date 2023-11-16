@@ -3,6 +3,8 @@
 具体内容是，使用了mybatis的工具包，可以和mysql联用进行简单的增删改查。
 # 手撸redis
 Netty开发redis客户端，Netty发送redis命令，netty解析redis消息。
+# 加入了心跳检测
+为了连接中间件
 后续继续修改。
 
 
