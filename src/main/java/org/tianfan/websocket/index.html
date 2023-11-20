@@ -1,0 +1,39 @@
+<!-- index.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h1>WebSocket Test</h1>
+    <div>
+        <input type="text" id="message" placeholder="Message">
+        <button onclick="send()">Send</button>
+    </div>
+    <div id="output"></div>
+    <script>
+        var socket = new WebSocket("ws://localhost:8080/websocket");
+
+        socket.onopen = function(event) {
+            console.log("WebSocket opened: " + event);
+        };
+
+        socket.onmessage = function(event) {
+            console.log("WebSocket message received: " + event.data);
+            var output = document.getElementById("output");
+            output.innerHTML += "<p>" + event.data + "</p>";
+        };
+
+        socket.onclose = function(event) {
+            console.log("WebSocket closed: " + event);
+        };
+
+        function send() {
+            var message = document.getElementById("message").value;
+            socket.send(message);
+        }
+    </script>
+</body>
+</html>
