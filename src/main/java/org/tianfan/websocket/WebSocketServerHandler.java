@@ -22,7 +22,7 @@ import java.util.*;
 
 public class WebSocketServerHandler extends SimpleChannelInboundHandler<TextWebSocketFrame> {
 
-    public static final String hostUrl = "ws(s)://spark-api.xf-yun.com/v3.1/chat";
+    public static final String hostUrl = "https://spark-api.xf-yun.com/v2.1/chat";
     public static final String appid = "fa5ba61a";
     public static final String apiSecret = "NzcwM2E2NWI2YzNiZDJmYzVhODU4ZTNi";
     public static final String apiKey = "8ea25fa8faa44c410f5f148ec8124c70";
@@ -31,10 +31,11 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<TextWebS
     public static  String NewQuestion = "";
     private Boolean wsCloseFlag=false;
     public static final Gson gson = new Gson();
-
+    public static StringBuilder text=new StringBuilder();
     @Override
     public void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame msg) throws Exception {
-
+        System.out.print("我：");
+        NewQuestion= msg.text();
         String authUrl = getAuthUrl(hostUrl, apiKey, apiSecret);
         OkHttpClient client = new OkHttpClient.Builder().build();
         String url = authUrl.toString().replace("http://", "ws://").replace("https://", "wss://");
@@ -100,8 +101,20 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<TextWebS
                     }
                     wsCloseFlag = true;
                 }
+
+                Gson gson=new Gson();
+                JsonParse jsonParse = gson.fromJson(text, JsonParse.class);
+                int i=0;
+                List<Text> list = jsonParse.payload.choices.text;
+
+                for (Text tex:list){
+                    WebSocketServerHandler.text.append(tex.content);
+                }
+
+
                 // 接收到消息后的操作
-                System.out.println("Received message: " + text);
+                System.out.println("Received message: " + WebSocketServerHandler.text);
+
             }
 
             @Override
@@ -136,9 +149,14 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<TextWebS
         WebSocket webSocket = client.newWebSocket(request, listener);
 
         // 处理消息
-        System.out.println("Received message: " + msg.text());
-
-        ctx.channel().writeAndFlush(new TextWebSocketFrame("Server received: " + msg.text()));
+       // System.out.println("Received message: " + msg.text());
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        ctx.channel().writeAndFlush(new TextWebSocketFrame("Server received: " + WebSocketServerHandler.text));
+        WebSocketServerHandler.text=new StringBuilder();
     }
 
     @Override
@@ -259,4 +277,5 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<TextWebS
             }
         }
     }
+
 }
