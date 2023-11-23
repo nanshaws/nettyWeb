@@ -149,7 +149,7 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<TextWebS
         WebSocket webSocket = client.newWebSocket(request, listener);
 
         // 处理消息
-       // System.out.println("Received message: " + msg.text());
+        // System.out.println("Received message: " + msg.text());
         try {
             Thread.sleep(2000);
         } catch (InterruptedException e) {
